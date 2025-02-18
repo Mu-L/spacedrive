@@ -14,6 +14,7 @@ import {
 	createRoutes,
 	DeeplinkEvent,
 	ErrorPage,
+	FileDropEvent,
 	KeybindEvent,
 	PlatformProvider,
 	SpacedriveInterfaceRoot,
@@ -59,21 +60,22 @@ declare global {
 	}
 }
 
-SuperTokens.init({
-	appInfo: {
-		apiDomain: AUTH_SERVER_URL,
-		apiBasePath: '/api/auth',
-		appName: 'Spacedrive Auth Service'
-	},
-	cookieHandler: getCookieHandler,
-	windowHandler: getWindowHandler,
-	recipeList: [
-		Session.init({ tokenTransferMethod: 'header' }),
-		EmailPassword.init(),
-		ThirdParty.init(),
-		Passwordless.init()
-	]
-});
+// Disabling until sync is ready.
+// SuperTokens.init({
+// 	appInfo: {
+// 		apiDomain: AUTH_SERVER_URL,
+// 		apiBasePath: '/api/auth',
+// 		appName: 'Spacedrive Auth Service'
+// 	},
+// 	cookieHandler: getCookieHandler,
+// 	windowHandler: getWindowHandler,
+// 	recipeList: [
+// 		Session.init({ tokenTransferMethod: 'header' }),
+// 		EmailPassword.init(),
+// 		ThirdParty.init(),
+// 		Passwordless.init()
+// 	]
+// });
 
 const startupError = (window as any).__SD_ERROR__ as string | undefined;
 
@@ -87,6 +89,10 @@ function useDragAndDrop() {
 		});
 
 		(async () => {
+			if (['linux', 'browser'].includes(await platform.getOs())) {
+				console.log('Skipping drag operation on Linux or Browser');
+				return;
+			}
 			if (dragState?.type === 'dragging' && dragState.items.length > 0) {
 				console.log('Starting drag operation with items:', dragState.items);
 
@@ -99,7 +105,9 @@ function useDragAndDrop() {
 						}
 
 						const file_path =
-							'path' in data ? data.path : await libraryClient.query(['files.getPath', data.id]);
+							'path' in data
+								? data.path
+								: await libraryClient.query(['files.getPath', data.id]);
 
 						console.log('Resolved file path:', file_path);
 						return {
@@ -108,9 +116,6 @@ function useDragAndDrop() {
 						};
 					})
 				);
-
-				const image = Transparent.split('/@fs')[1]!;
-				console.log('Using preview image:', image);
 
 				const validFiles = items.filter(Boolean).map((item) => item?.file_path);
 				console.log('Invoking start_drag with files:', validFiles);
@@ -134,14 +139,20 @@ function useDragAndDrop() {
 								y: payload.cursorPos.y,
 								screen: window.screen
 							});
+							// Refetch explorer files after successful drop
+							queryClient.invalidateQueries({ queryKey: ['search.paths'] });
 						}
 
 						explorerStore.drag = null;
 					};
 
+					const image = !Transparent.includes('/@fs/')
+						? Transparent
+						: Transparent.replace('/@fs', '');
+
 					await invoke('start_drag', {
 						files: validFiles,
-						iconPath: image,
+						image: image,
 						onEvent: channel
 					});
 					console.log('start_drag invoked successfully');
@@ -149,6 +160,9 @@ function useDragAndDrop() {
 					console.error('Failed to start drag:', error);
 					explorerStore.drag = null;
 				}
+			} else {
+				console.log('Drag operation cancelled');
+				await invoke('stop_drag');
 			}
 		})();
 	}, [dragState]);
@@ -181,10 +195,14 @@ export default function App() {
 			if (!url) return;
 			document.dispatchEvent(new DeeplinkEvent(url));
 		});
+		const fileDropListener = listen('tauri://drag-drop', async (data) => {
+			document.dispatchEvent(new FileDropEvent((data.payload as { paths: string[] }).paths));
+		});
 
 		return () => {
 			keybindListener.then((unlisten) => unlisten());
 			deeplinkListener.then((unlisten) => unlisten());
+			fileDropListener.then((unlisten) => unlisten());
 		};
 	}, []);
 
@@ -379,7 +397,8 @@ function AppInner() {
 								new Promise((res) => {
 									startTransition(() => {
 										setTabs((tabs) => {
-											const { pathname, search } = selectedTab.router.state.location;
+											const { pathname, search } =
+												selectedTab.router.state.location;
 											const newTab = createTab({ pathname, search });
 											const newTabs = [...tabs, newTab];
 
