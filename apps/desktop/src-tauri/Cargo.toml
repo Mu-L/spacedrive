@@ -1,6 +1,6 @@
 [package]
 name    = "sd-desktop"
-version = "0.5.0"
+version = "0.4.3"
 
 authors              = ["Spacedrive Technology Inc <support@spacedrive.com>"]
 default-run          = "sd-desktop"
@@ -18,6 +18,7 @@ sd-prisma = { path = "../../../crates/prisma" }
 # Workspace dependencies
 axum               = { workspace = true, features = ["query"] }
 axum-extra         = { workspace = true, features = ["typed-header"] }
+base64             = { workspace = true }
 futures            = { workspace = true }
 http               = { workspace = true }
 hyper              = { workspace = true }
@@ -32,25 +33,24 @@ thiserror          = { workspace = true }
 tokio              = { workspace = true, features = ["sync"] }
 tracing            = { workspace = true }
 uuid               = { workspace = true, features = ["serde"] }
-base64             = { workspace = true }
 
 # Specific Desktop dependencies
 # WARNING: Do NOT enable default features, as that vendors dbus (see below)
+drag                           = { git = "https://github.com/spacedriveapp/drag-rs", branch = "move-operation" }
 opener                         = { version = "0.7.1", features = ["reveal"], default-features = false }
 specta-typescript              = "=0.0.7"
 tauri-plugin-clipboard-manager = "=2.0.1"
 tauri-plugin-cors-fetch        = { path = "../../../crates/tauri-plugin-cors-fetch" }
 tauri-plugin-deep-link         = "=2.0.1"
 tauri-plugin-dialog            = "=2.0.3"
+tauri-plugin-drag              = "2.0.0"
 tauri-plugin-http              = "=2.0.3"
 tauri-plugin-os                = "=2.0.1"
 tauri-plugin-shell             = "=2.0.2"
 tauri-plugin-updater           = "=2.0.2"
-tauri-plugin-drag = "2.0.0"
-drag = "2.0.0"
 
 # memory allocator
-mimalloc          = { workspace = true }
+mimalloc = { workspace = true }
 
 [dependencies.tauri]
 features = ["linux-libxdo", "macos-private-api", "native-tls-vendored", "unstable"]
@@ -70,6 +70,9 @@ sd-desktop-linux = { path = "../crates/linux" }
 dbus = { version = "0.9.7", features = ["stdfd"] }
 # https://github.com/tauri-apps/tauri/blob/tauri-v2.0.0/crates/tauri/Cargo.toml#L101
 webkit2gtk = { version = "=2.0.1", features = ["v2_40"] }
+gtk = { version = "0.18", features = ["v3_24"] }
+tao = { version = "0.31.1", features = ["serde"] }
+
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # Spacedrive Sub-crates

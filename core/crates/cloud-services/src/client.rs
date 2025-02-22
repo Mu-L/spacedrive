@@ -10,7 +10,6 @@ use quic_rpc::{transport::quinn::QuinnConnector, RpcClient, RpcMessage};
 use quinn::{crypto::rustls::QuicClientConfig, ClientConfig, Endpoint};
 use reqwest::{IntoUrl, Url};
 use reqwest_middleware::{reqwest, ClientBuilder, ClientWithMiddleware};
-use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 use tokio::sync::{Mutex, RwLock};
 use tracing::warn;
 
@@ -64,7 +63,7 @@ impl CloudServices {
 		cloud_p2p_dns_origin_name: String,
 		domain_name: String,
 	) -> Result<Self, Error> {
-		let http_client_builder = reqwest::Client::builder().timeout(Duration::from_secs(3));
+		let mut http_client_builder = reqwest::Client::builder().timeout(Duration::from_secs(3));
 
 		#[cfg(not(debug_assertions))]
 		{
